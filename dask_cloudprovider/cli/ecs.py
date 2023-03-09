@@ -53,6 +53,12 @@ logger = logging.getLogger(__name__)
     help="Scheduler timeout (e.g 5 minutes)",
 )
 @click.option(
+    "--scheduler-task-arn",
+    type=str,
+    default=None,
+    help="Scheduler task ARN (for an existing cluster, you must also specify --cluster-arn)",
+)
+@click.option(
     "--worker-cpu", type=int, default=None, help="Worker CPU reservation in milli-CPU"
 )
 @click.option(
@@ -65,9 +71,17 @@ logger = logging.getLogger(__name__)
     help="Number of workers to start with the cluster",
 )
 @click.option(
+    "--worker-task-arn",
+    type=str,
+    default=None,
+    metavar='ARN',
+    help="Worker task ARN (for an existing cluster, you must also specify --cluster-arn)",
+)
+@click.option(
     "--cluster-arn",
     type=str,
     default=None,
+    metavar='ARN',
     help="The ARN of an existing ECS cluster to use",
 )
 @click.option(
@@ -80,12 +94,14 @@ logger = logging.getLogger(__name__)
     "--execution-role-arn",
     type=str,
     default=None,
+    metavar='ARN',
     help="The ARN of an existing IAM role to use for ECS execution",
 )
 @click.option(
     "--task-role-arn",
     type=str,
     default=None,
+    metavar='ARN',
     help="The ARN of an existing IAM role to give to the tasks",
 )
 @click.option(
@@ -114,14 +130,16 @@ logger = logging.getLogger(__name__)
     "--vpc",
     type=str,
     default=None,
-    help="The ID of an existing VPC (uses default if not specified)",
+    metavar='<vpc-id>',
+    help="The ID of an existing VPC (defaults to 'default' VPC). E.g.: vpc-1234567890abcdef0",
 )
 @click.option(
     "--subnet",
     type=str,
     default=None,
     multiple=True,
-    help="VPC subnet to use (can be used multipel times, will defaul to all if none specified)",
+    metavar='<subnet-id>',
+    help="VPC subnet to use (defaults to all subnets, E.g.: subnet-0397b6c47c42e4dc0)",
 )
 @click.option(
     "--security-group",
@@ -155,9 +173,11 @@ def main(
     scheduler_mem,
     scheduler_port,
     scheduler_timeout,
+    scheduler_task_arn,
     worker_cpu,
     worker_mem,
     n_workers,
+    worker_task_arn,
     cluster_arn,
     cluster_name_template,
     execution_role_arn,
