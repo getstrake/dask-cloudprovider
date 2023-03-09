@@ -200,38 +200,69 @@ def main(
     subnet = subnet or None
     security_group = security_group or None
     task_role_policy = task_role_policy or None
+
+    cluster_kwargs = {
+        'fargate_scheduler': fargate_scheduler or fargate,
+        'fargate_workers': fargate_workers or fargate,
+        'scheduler_port': scheduler_port,
+        'scheduler_timeout': scheduler_timeout,
+        'n_workers': n_workers,
+        'cluster_arn': cluster_arn,
+        'cloudwatch_logs_group': cloudwatch_logs_group,
+        'cloudwatch_logs_stream_prefix': cloudwatch_logs_stream_prefix,
+        'cloudwatch_logs_default_retention': cloudwatch_logs_default_retention,
+        'environment': environment,
+        'skip_cleanup': skip_cleanup,
+    }
+
+    # Common attributes needed if an a Scheduler or Worker ECS task definition
+    # will be created.
+    if scheduler_task_arn == None or worker_task_arn == None:
+        cluster_kwargs.update({
+            'image': image,
+            'vpc': vpc,
+            'subnets': subnet,
+            'security_groups': security_group,
+            'execution_role_arn': execution_role_arn,
+            'task_role_arn': task_role_arn,
+            'task_role_policies': task_role_policy,
+            'tags': tag,
+        })
+
+    if cluster_arn == None:
+        cluster_kwargs.update({
+            'cluster_name_template': cluster_name_template,
+        })
+
+    if scheduler_task_arn != None:
+        if not cluster_arn:
+            raise click.UsageError("--cluster-arn must be provided when using --scheduler-task-arn")
+        cluster_kwargs.update({ 'scheduler_task_definition_arn': scheduler_task_arn })
+    else:
+        cluster_kwargs.update({
+            'scheduler_cpu': scheduler_cpu,
+            'scheduler_mem': scheduler_mem,
+        })
+
+    if worker_task_arn != None:
+        if not cluster_arn:
+            raise click.UsageError("--cluster-arn must be provided when using --scheduler-task-arn")
+        cluster_kwargs.update({ 'worker_task_definition_arn': worker_task_arn })
+    else:
+        cluster_kwargs.update({
+            'worker_cpu': worker_cpu,
+            'worker_mem': worker_mem,
+        })
+
     logger.info("Starting ECS cluster")
     try:
-        cluster = ECSCluster(
-            fargate_scheduler=fargate_scheduler or fargate,
-            fargate_workers=fargate_workers or fargate,
-            image=image,
-            scheduler_cpu=scheduler_cpu,
-            scheduler_mem=scheduler_mem,
-            scheduler_port=scheduler_port,
-            scheduler_timeout=scheduler_timeout,
-            worker_cpu=worker_cpu,
-            worker_mem=worker_mem,
-            n_workers=n_workers,
-            cluster_arn=cluster_arn,
-            cluster_name_template=cluster_name_template,
-            execution_role_arn=execution_role_arn,
-            task_role_arn=task_role_arn,
-            task_role_policies=task_role_policy,
-            cloudwatch_logs_group=cloudwatch_logs_group,
-            cloudwatch_logs_stream_prefix=cloudwatch_logs_stream_prefix,
-            cloudwatch_logs_default_retention=cloudwatch_logs_default_retention,
-            vpc=vpc,
-            subnets=subnet,
-            security_groups=security_group,
-            environment=environment,
-            tags=tag,
-            skip_cleanup=skip_cleanup,
-        )
-    except Exception as e:
-        ctx = click.get_current_context()
+        cluster = ECSCluster(**cluster_kwargs)
+    except click.ClickException as e:
         logger.error(str(e) + "\n")
+        ctx = click.get_current_context()
         click.echo(ctx.get_help())
+    except Exception as e:
+        logger.error(str(e) + "\n")
         sys.exit(1)
 
     async def run():
