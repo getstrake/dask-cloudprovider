@@ -207,6 +207,10 @@ def main(
         'fargate_workers': fargate_workers or fargate
     })
 
+    del cluster_kwargs['fargate']
+    del cluster_kwargs['fargate_scheduler']
+    del cluster_kwargs['fargate_workers']
+
     if scheduler_task_arn != None:
         if not cluster_arn:
             raise click.UsageError("--cluster-arn must be provided when using --scheduler-task-arn")
