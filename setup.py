@@ -35,7 +35,7 @@ setup(
     extras_require=extras_require,
     entry_points="""
     [console_scripts]
-    dask-ecs=dask_cloudprovider.cli.ecs:go
+    dask-ecs=dask_cloudprovider.cli.ecs:main
     """,
     python_requires=">=3.8",
 )

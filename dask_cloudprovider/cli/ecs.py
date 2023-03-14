@@ -9,7 +9,6 @@ from tornado.ioloop import IOLoop, TimeoutError
 
 from dask_cloudprovider.aws import ECSCluster
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -168,14 +167,25 @@ def main(**kwargs):
     # Each click option adds a variable to the parameters of this function that
     # corresponds to the option name, but all '-' characters are replaced with
     # '_'.
+    #
+    # Some CLI options map to arrays, where multiple declarations of the option
+    # are gathered into lists prior to passing to `ECSCluster()`.
+    #
+    kwargs['tags'] = {v.split("=")[0]: v.split("=")[1] for v in kwargs['tag']} if kwargs['tag'] else None
+    del kwargs['tag']
 
-    kwargs['tag'] = {v.split("=")[0]: v.split("=")[1] for v in kwargs['tag']} if kwargs['tag'] else None
     kwargs['environment'] = (
         { v.split("=")[0]: v.split("=")[1] for v in kwargs['environment'] } if kwargs['environment'] else None
     )
-    kwargs['subnet'] = kwargs['subnet'] or None
-    kwargs['security_group'] = kwargs['security_group'] or None
-    kwargs['task_role_policy'] = kwargs['task_role_policy'] or None
+
+    kwargs['subnets'] = kwargs['subnet'] or None
+    del kwargs['subnet']
+
+    kwargs['security_groups'] = kwargs['security_group'] or None
+    del kwargs['security_group']
+
+    kwargs['task_role_policies'] = kwargs['task_role_policy'] or None
+    del kwargs['task_role_policy']
 
     kwargs.update({
         'fargate_scheduler': kwargs['fargate_scheduler'] or kwargs['fargate'],
@@ -192,8 +202,8 @@ def main(**kwargs):
             raise click.UsageError("--cluster-arn must be provided when using --scheduler-task-arn")
         kwargs.update({ 'worker_task_definition_arn': kwargs['worker_task_arn'] })
 
-    # Clean up keyword arguments to `main()` that do not correspond to a constructor
-    # argument for `ECSCluster()`.
+    # Clean up remaining keyword arguments to `main()` that do not correspond to
+    # a constructor argument for `ECSCluster()`.
     del kwargs['fargate']
     del kwargs['scheduler_task_arn']
     del kwargs['worker_task_arn']
@@ -229,9 +239,5 @@ def main(**kwargs):
         logger.info("End dask-ecs")
 
 
-def go():
-    main()
-
-
 if __name__ == "__main__":
-    go()
+    main()
