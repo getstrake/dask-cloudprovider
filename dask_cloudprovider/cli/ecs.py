@@ -166,6 +166,10 @@ logger = logging.getLogger(__name__)
 @click.option("--skip_cleanup", is_flag=True, help="Skip cleanup of stale resources")
 @click.version_option()
 def main(debug, **kwargs):
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.debug("Debug logging enabled.")
+
     # Each click option adds a variable to the parameters of this function that
     # corresponds to the option name, but all '-' characters are replaced with
     # '_'.
