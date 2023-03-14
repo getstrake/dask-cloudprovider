@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @click.command()
+@click.option("--debug", is_flag=True, help="Enable debug output (default off)")
 @click.option("--fargate", is_flag=True, help="Turn on fargate mode (default off)")
 @click.option(
     "--fargate-scheduler",
@@ -163,7 +164,7 @@ logger = logging.getLogger(__name__)
 )
 @click.option("--skip_cleanup", is_flag=True, help="Skip cleanup of stale resources")
 @click.version_option()
-def main(**kwargs):
+def main(debug, **kwargs):
     # Each click option adds a variable to the parameters of this function that
     # corresponds to the option name, but all '-' characters are replaced with
     # '_'.
@@ -216,6 +217,8 @@ def main(**kwargs):
         ctx = click.get_current_context()
         click.echo(ctx.get_help())
     except Exception as e:
+        if debug:
+            traceback.print_exc()
         logger.error(str(e) + "\n")
         sys.exit(1)
 
