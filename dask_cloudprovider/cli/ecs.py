@@ -1,6 +1,7 @@
 import logging
 from asyncio import sleep
 import sys
+import traceback
 
 import click
 from distributed.cli.utils import install_signal_handlers
