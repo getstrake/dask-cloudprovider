@@ -174,7 +174,7 @@ def main(**kwargs):
         { v.split("=")[0]: v.split("=")[1] for v in kwargs['environment'] } if kwargs['environment'] else None
     )
     kwargs['subnet'] = kwargs['subnet'] or None
-    kwargs['security_group'] = security_group or None
+    kwargs['security_group'] = kwargs['security_group'] or None
     kwargs['task_role_policy'] = kwargs['task_role_policy'] or None
 
     kwargs.update({
