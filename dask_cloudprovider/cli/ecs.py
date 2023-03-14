@@ -164,66 +164,43 @@ logger = logging.getLogger(__name__)
 )
 @click.option("--skip_cleanup", is_flag=True, help="Skip cleanup of stale resources")
 @click.version_option()
-def main(
-    fargate,
-    fargate_scheduler,
-    fargate_workers,
-    image,
-    scheduler_cpu,
-    scheduler_mem,
-    scheduler_port,
-    scheduler_timeout,
-    scheduler_task_arn,
-    worker_cpu,
-    worker_mem,
-    n_workers,
-    worker_task_arn,
-    cluster_arn,
-    cluster_name_template,
-    execution_role_arn,
-    task_role_arn,
-    task_role_policy,
-    cloudwatch_logs_group,
-    cloudwatch_logs_stream_prefix,
-    cloudwatch_logs_default_retention,
-    vpc,
-    subnet,
-    security_group,
-    environment,
-    tag,
-    skip_cleanup,
-):
-    tag = {v.split("=")[0]: v.split("=")[1] for v in tag} if tag else None
-    environment = (
-        {v.split("=")[0]: v.split("=")[1] for v in environment} if environment else None
-    )
-    subnet = subnet or None
-    security_group = security_group or None
-    task_role_policy = task_role_policy or None
+def main(**kwargs):
+    # Each click option adds a variable to the parameters of this function that
+    # corresponds to the option name, but all '-' characters are replaced with
+    # '_'.
 
-    cluster_kwargs = locals()
-    cluster_kwargs.update({
-        'fargate_scheduler': fargate_scheduler or fargate,
-        'fargate_workers': fargate_workers or fargate
+    kwargs['tag'] = {v.split("=")[0]: v.split("=")[1] for v in kwargs['tag']} if kwargs['tag'] else None
+    kwargs['environment'] = (
+        { v.split("=")[0]: v.split("=")[1] for v in kwargs['environment'] } if kwargs['environment'] else None
+    )
+    kwargs['subnet'] = kwargs['subnet'] or None
+    kwargs['security_group'] = security_group or None
+    kwargs['task_role_policy'] = kwargs['task_role_policy'] or None
+
+    kwargs.update({
+        'fargate_scheduler': kwargs['fargate_scheduler'] or kwargs['fargate'],
+        'fargate_workers': kwargs['fargate_workers'] or kwargs['fargate']
     })
 
-    del cluster_kwargs['fargate']
-    del cluster_kwargs['fargate_scheduler']
-    del cluster_kwargs['fargate_workers']
-
-    if scheduler_task_arn != None:
-        if not cluster_arn:
+    if kwargs['scheduler_task_arn'] != None:
+        if not kwargs['cluster_arn']:
             raise click.UsageError("--cluster-arn must be provided when using --scheduler-task-arn")
-        cluster_kwargs.update({ 'scheduler_task_definition_arn': scheduler_task_arn })
+        kwargs.update({ 'scheduler_task_definition_arn': kwargs['scheduler_task_arn'] })
 
-    if worker_task_arn != None:
-        if not cluster_arn:
+    if kwargs['worker_task_arn'] != None:
+        if not kwargs['cluster_arn']:
             raise click.UsageError("--cluster-arn must be provided when using --scheduler-task-arn")
-        cluster_kwargs.update({ 'worker_task_definition_arn': worker_task_arn })
+        kwargs.update({ 'worker_task_definition_arn': kwargs['worker_task_arn'] })
+
+    # Clean up keyword arguments to `main()` that do not correspond to a constructor
+    # argument for `ECSCluster()`.
+    del kwargs['fargate']
+    del kwargs['scheduler_task_arn']
+    del kwargs['worker_task_arn']
 
     logger.info("Starting ECS cluster")
     try:
-        cluster = ECSCluster(**cluster_kwargs)
+        cluster = ECSCluster(**kwargs)
     except click.ClickException as e:
         logger.error(str(e) + "\n")
         ctx = click.get_current_context()
