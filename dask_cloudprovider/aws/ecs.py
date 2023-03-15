@@ -1016,7 +1016,7 @@ class ECSCluster(SpecCluster, ConfigMixin):
         ):
             await super()._start()
 
-    async def _close():
+    async def _close(self):
         # To prevent an existing scheduler process from being remotely close we
         # override _close() to close the RPC connection prior to `SpecCluster`
         # getting involved and calling `terminate()`.
