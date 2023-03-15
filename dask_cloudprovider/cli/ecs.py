@@ -166,7 +166,7 @@ logger = logging.getLogger(__name__)
     multiple=True,
     help="Tag to apply to all resources created automatically in the form FOO=bar (can be used multiple times)",
 )
-@click.option("--skip_cleanup", is_flag=True, help="Skip cleanup of stale resources")
+@click.option("--skip-cleanup", is_flag=True, help="Skip cleanup of stale resources")
 @click.version_option()
 def main(debug, **kwargs):
     if debug:
