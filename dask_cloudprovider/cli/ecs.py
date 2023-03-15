@@ -212,7 +212,7 @@ def main(debug, **kwargs):
         kwargs.update({ 'worker_task_definition_arn': kwargs['worker_task_arn'] })
 
     if kwargs['scheduler_host']:
-        kwargs['scheduler_address'] = kwargs['scheduler_host']
+        kwargs['scheduler_address'] = "{}:{}".format(kwargs['scheduler_host'], kwargs['scheduler_port'])
 
     # Clean up remaining keyword arguments to `main()` that do not correspond to
     # a constructor argument for `ECSCluster()`.
