@@ -1,15 +1,15 @@
 import logging
-from asyncio import sleep
+import asyncio
+import signal
 import sys
 import traceback
 
 import click
-from distributed.cli.utils import install_signal_handlers
 from distributed.core import Status
-from tornado.ioloop import IOLoop, TimeoutError
 
 from dask_cloudprovider.aws import ECSCluster
 
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 
@@ -170,8 +170,8 @@ logger = logging.getLogger(__name__)
 @click.version_option()
 def main(debug, **kwargs):
     if debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logging.debug("Debug logging enabled.")
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug logging enabled.")
 
     # Each click option adds a variable to the parameters of this function that
     # corresponds to the option name, but all '-' characters are replaced with
@@ -221,35 +221,39 @@ def main(debug, **kwargs):
     del kwargs['worker_task_arn']
     del kwargs['scheduler_host']
 
-    logger.info("Starting ECS cluster")
+    async def entrypoint():
+        logger.info("Starting ECS cluster")
+        loop = asyncio.get_event_loop()
+
+        def on_signal(signum):
+            logger.info("Exiting on signal %d", signum)
+            cluster.close(timeout=2)
+
+        for s in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(s, on_signal, s)
+
+        try:
+            async def wait_for_close():
+                logger.info("Ready")
+                while cluster.status != Status.closed:
+                    await asyncio.sleep(1)
+            cluster = ECSCluster(**kwargs)
+            cluster.adapt(minimum=0, maximum=1000)
+            await asyncio.wait((cluster, wait_for_close()))
+        except click.ClickException as e:
+            logger.error(str(e) + "\n")
+            ctx = click.get_current_context()
+            click.echo(ctx.get_help())
+        except Exception as e:
+            if debug:
+                logger.debug("--- Dumping traceback for uncaught exception ---")
+                traceback.print_exc()
+            logger.error(str(e) + "\n")
+            sys.exit(1)
+
     try:
-        cluster = ECSCluster(**kwargs)
-    except click.ClickException as e:
-        logger.error(str(e) + "\n")
-        ctx = click.get_current_context()
-        click.echo(ctx.get_help())
-    except Exception as e:
-        if debug:
-            logger.debug("--- Dumping traceback for uncaught exception ---")
-            traceback.print_exc()
-        logger.error(str(e) + "\n")
-        sys.exit(1)
-
-    async def run():
-        logger.info("Ready")
-        while cluster.status != Status.closed:
-            await sleep(0.2)
-
-    def on_signal(signum):
-        logger.info("Exiting on signal %d", signum)
-        cluster.close(timeout=2)
-
-    loop = IOLoop.current()
-    install_signal_handlers(loop, cleanup=on_signal)
-
-    try:
-        loop.run_sync(run)
-    except (KeyboardInterrupt, TimeoutError):
+        asyncio.run(entrypoint())
+    except KeyboardInterrupt:
         logger.info("Shutting down")
     finally:
         logger.info("End dask-ecs")
