@@ -994,6 +994,12 @@ class ECSCluster(SpecCluster, ConfigMixin):
                     self_.address = self._scheduler_address
                     self_.status = Status.running
 
+                # `distributed.deploy.SpecCluster` expects this class to implement
+                # close() from `distributed.Scheduler`. We do the minimum here to
+                # behave correctly according to the implicit API contract.
+                async def close(self_):
+                    self_.status = Status.closed
+
                 def __await__(self):
                     async def _():
                         return self
