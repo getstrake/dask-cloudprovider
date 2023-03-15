@@ -42,6 +42,9 @@ logger = logging.getLogger(__name__)
     "--scheduler-mem", type=int, default=None, help="Scheduler memory reservation in MB"
 )
 @click.option(
+    "--scheduler-host", type=str, default=None, help="Hostname of existing scheduler"
+)
+@click.option(
     "--scheduler-port",
     type=int,
     default=8786,
@@ -208,11 +211,15 @@ def main(debug, **kwargs):
             raise click.UsageError("--cluster-arn must be provided when using --scheduler-task-arn")
         kwargs.update({ 'worker_task_definition_arn': kwargs['worker_task_arn'] })
 
+    if kwargs['scheduler_host']:
+        kwargs['scheduler_address'] = kwargs['scheduler_host']
+
     # Clean up remaining keyword arguments to `main()` that do not correspond to
     # a constructor argument for `ECSCluster()`.
     del kwargs['fargate']
     del kwargs['scheduler_task_arn']
     del kwargs['worker_task_arn']
+    del kwargs['scheduler_host']
 
     logger.info("Starting ECS cluster")
     try:
@@ -223,6 +230,7 @@ def main(debug, **kwargs):
         click.echo(ctx.get_help())
     except Exception as e:
         if debug:
+            logger.debug("--- Dumping traceback for uncaught exception ---")
             traceback.print_exc()
         logger.error(str(e) + "\n")
         sys.exit(1)
