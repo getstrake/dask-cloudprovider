@@ -425,6 +425,7 @@ class Worker(Task):
         gpu: int,
         nthreads: Optional[int],
         extra_args: List[str],
+        skip_overrides: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -434,25 +435,29 @@ class Worker(Task):
         self._mem = mem
         self._gpu = gpu
         self._nthreads = nthreads
-        self._overrides = {
-            "command": [
-                "dask-cuda-worker" if self._gpu else "dask-worker",
-                self.scheduler,
-                "--name",
-                str(self.name),
-                "--nthreads",
-                "{}".format(
-                    max(int(self._cpu / 1024), 1)
-                    if nthreads is None
-                    else self._nthreads
-                ),
-                "--memory-limit",
-                "{}GB".format(int(self._mem / 1024)),
-                "--death-timeout",
-                "60",
-            ]
-            + (list() if not extra_args else extra_args)
-        }
+
+        # Some containers may want to execute a custom command to start the
+        # worker. We make this command override optional for this reason.
+        if not 'task_definition_arn' in kwargs:
+            self._overrides = {
+                "command": [
+                    "dask-cuda-worker" if self._gpu else "dask-worker",
+                    self.scheduler,
+                    "--name",
+                    str(self.name),
+                    "--nthreads",
+                    "{}".format(
+                        max(int(self._cpu / 1024), 1)
+                        if nthreads is None
+                        else self._nthreads
+                    ),
+                    "--memory-limit",
+                    "{}GB".format(int(self._mem / 1024)),
+                    "--death-timeout",
+                    "60",
+                ]
+                + (list() if not extra_args else extra_args)
+            }
 
 
 class ECSCluster(SpecCluster, ConfigMixin):
