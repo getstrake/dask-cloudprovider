@@ -75,6 +75,12 @@ logger = logging.getLogger(__name__)
     help="Number of workers to start with the cluster",
 )
 @click.option(
+    "--adapt-range",
+    type=str,
+    default=None,
+    help="Adaptive scaling range. Valid forms are: 100 (min = 0, max = 100), 10,100 (min = 10, max = 100)",
+)
+@click.option(
     "--worker-task-arn",
     type=str,
     default=None,
@@ -180,6 +186,12 @@ def main(debug, **kwargs):
     # Some CLI options map to arrays, where multiple declarations of the option
     # are gathered into lists prior to passing to `ECSCluster()`.
     #
+    if kwargs['adapt_range']:
+        adapt_range = kwargs['adapt_range'].strip().split(",", 2)
+        if not len(adapt_range) == 2:
+            log.warn('Invalid TODO')
+    del kwargs['adapt_range']
+
     kwargs['tags'] = {v.split("=")[0]: v.split("=")[1] for v in kwargs['tag']} if kwargs['tag'] else None
     del kwargs['tag']
 
@@ -212,6 +224,7 @@ def main(debug, **kwargs):
         kwargs.update({ 'worker_task_definition_arn': kwargs['worker_task_arn'] })
 
     if kwargs['scheduler_host']:
+        # TODO Check that the address does not contain a port before adding one.
         kwargs['scheduler_address'] = "{}:{}".format(kwargs['scheduler_host'], kwargs['scheduler_port'])
 
     # Clean up remaining keyword arguments to `main()` that do not correspond to
@@ -222,14 +235,14 @@ def main(debug, **kwargs):
     del kwargs['scheduler_host']
 
     try:
-        asyncio.run(run_cluster(**kwargs))
+        asyncio.run(run_cluster(debug, adapt_range, **kwargs))
     except KeyboardInterrupt:
         logger.info("Shutting down")
     finally:
         logger.info("End dask-ecs")
 
 
-async def run_cluster(**kwargs):
+async def run_cluster(debug, adapt_range=None, **kwargs):
     logger.info("Starting ECS cluster")
     loop = asyncio.get_event_loop()
 
@@ -246,7 +259,9 @@ async def run_cluster(**kwargs):
             while cluster.status != Status.closed:
                 await asyncio.sleep(0.5)
         cluster = ECSCluster(**kwargs)
-        cluster.adapt(minimum=0, maximum=1000)
+        if isinstance(adapt_range, (tuple, list)):
+            cluster.adapt(minimum=0, maximum=200)
+        # TODO Replace with gather()
         await asyncio.wait((cluster, wait_for_close()))
     except click.ClickException as e:
         logger.error(str(e) + "\n")
